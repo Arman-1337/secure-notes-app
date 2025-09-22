@@ -1,0 +1,17 @@
+{
+  "name": "secure-notes-app",
+  "version": "1.0.0",
+  "description": "Client-side encrypted note sharing with AES-GCM",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": ["cryptography", "encryption", "security", "web-crypto-api"],
+  "author": "Arman-1337",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "@peculiar/webcrypto": "^1.4.0"
+  }
+}

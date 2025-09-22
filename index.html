@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Note Sharing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #569cd6;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #9cdcfe;
+            font-weight: 500;
+        }
+
+        textarea, input[type="password"] {
+            width: 100%;
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        textarea {
+            min-height: 200px;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #007acc;
+            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
+        }
+
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #1177bb;
+        }
+
+        button:disabled {
+            background-color: #404040;
+            cursor: not-allowed;
+        }
+
+        .success {
+            background-color: #0f7b0f;
+        }
+
+        .success:hover {
+            background-color: #106010;
+        }
+
+        .warning {
+            background-color: #f9826c;
+            color: #1e1e1e;
+        }
+
+        .warning:hover {
+            background-color: #f97055;
+        }
+
+        .encrypted-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #252526;
+            border-radius: 8px;
+            border-left: 4px solid #569cd6;
+        }
+
+        .url-display {
+            background-color: #2d2d30;
+            border: 1px solid #3c3c3c;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .decrypt-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #0f2027;
+            border-radius: 8px;
+            border-left: 4px solid #4ec9b0;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background-color: rgba(16, 96, 16, 0.3);
+            border: 1px solid #0f7b0f;
+            color: #4ec9b0;
+        }
+
+        .status.error {
+            background-color: rgba(244, 71, 71, 0.3);
+            border: 1px solid #f44747;
+            color: #f48771;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Secure Note Sharing</h1>
+        
+        <!-- Main encryption form -->
+        <div id="encrypt-form">
+            <div class="form-group">
+                <label for="noteText">Enter your note:</label>
+                <textarea id="noteText" placeholder="Type your secure note here..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Enter a strong password">
+            </div>
+            
+            <button id="encryptBtn">🔒 Encrypt & Generate Link</button>
+            <button id="clearBtn" class="warning">Clear</button>
+        </div>
+
+        <!-- Encrypted result section -->
+        <div id="encrypted-result" class="encrypted-section hidden">
+            <h3>✅ Note Encrypted Successfully!</h3>
+            <p>Share this secure URL with the intended recipient:</p>
+            <div id="secureUrl" class="url-display"></div>
+            <button id="copyBtn" class="success">📋 Copy Link</button>
+            <button id="newNoteBtn">Create New Note</button>
+        </div>
+
+        <!-- Decryption section (shown when hash is present) -->
+        <div id="decrypt-section" class="decrypt-section hidden">
+            <h3>🔓 Decrypt Note</h3>
+            <p>This URL contains an encrypted note. Enter the password to decrypt:</p>
+            
+            <div class="form-group">
+                <label for="decryptPassword">Password:</label>
+                <input type="password" id="decryptPassword" placeholder="Enter the password">
+            </div>
+            
+            <button id="decryptBtn">🔓 Decrypt Note</button>
+            
+            <div id="decrypted-result" class="hidden">
+                <h4>Decrypted Note:</h4>
+                <textarea id="decryptedText" readonly></textarea>
+            </div>
+        </div>
+
+        <!-- Status messages -->
+        <div id="status"></div>
+    </div>
+
+    <script src="crypto-utils.js"></script>
+    <script>
+        // DOM elements
+        const encryptForm = document.getElementById('encrypt-form');
+        const encryptedResult = document.getElementById('encrypted-result');
+        const decryptSection = document.getElementById('decrypt-section');
+        const noteText = document.getElementById('noteText');
+        const password = document.getElementById('password');
+        const encryptBtn = document.getElementById('encryptBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const secureUrl = document.getElementById('secureUrl');
+        const copyBtn = document.getElementById('copyBtn');
+        const newNoteBtn = document.getElementById('newNoteBtn');
+        const decryptPassword = document.getElementById('decryptPassword');
+        const decryptBtn = document.getElementById('decryptBtn');
+        const decryptedResult = document.getElementById('decrypted-result');
+        const decryptedText = document.getElementById('decryptedText');
+        const status = document.getElementById('status');
+
+        // Show status message
+        function showStatus(message, isError = false) {
+            status.innerHTML = `<div class="status ${isError ? 'error' : 'success'}">${message}</div>`;
+            setTimeout(() => status.innerHTML = '', 3000);
+        }
+
+        // Check if URL contains encrypted data on page load
+        window.addEventListener('load', function() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                // Hide encryption form and show decryption section
+                encryptForm.classList.add('hidden');
+                decryptSection.classList.remove('hidden');
+            }
+        });
+
+        // Encrypt button handler
+        encryptBtn.addEventListener('click', async function() {
+            const note = noteText.value.trim();
+            const pass = password.value;
+
+            if (!note) {
+                showStatus('Please enter a note to encrypt.', true);
+                return;
+            }
+
+            if (!pass) {
+                showStatus('Please enter a password.', true);
+                return;
+            }
+
+            try {
+                encryptBtn.disabled = true;
+                encryptBtn.textContent = '🔄 Encrypting...';
+
+                // Encrypt the note
+                const result = await encryptNote(note, pass);
+                
+                // Create shareable URL with encrypted data in hash fragment
+                const currentUrl = window.location.origin + window.location.pathname;
+                const shareableUrl = `${currentUrl}#${result.ciphertext}:${result.iv}:${result.salt}`;
+                
+                // Display results
+                secureUrl.textContent = shareableUrl;
+                encryptForm.classList.add('hidden');
+                encryptedResult.classList.remove('hidden');
+                
+                showStatus('Note encrypted successfully!');
+                
+            } catch (error) {
+                console.error('Encryption error:', error);
+                showStatus('Failed to encrypt note. Please try again.', true);
+            } finally {
+                encryptBtn.disabled = false;
+                encryptBtn.textContent = '🔒 Encrypt & Generate Link';
+            }
+        });
+
+        // Clear button handler
+        clearBtn.addEventListener('click', function() {
+            noteText.value = '';
+            password.value = '';
+            status.innerHTML = '';
+        });
+
+        // Copy button handler
+        copyBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(secureUrl.textContent).then(() => {
+                showStatus('Link copied to clipboard!');
+                copyBtn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 Copy Link';
+                }, 2000);
+            }).catch(() => {
+                showStatus('Failed to copy to clipboard.', true);
+            });
+        });
+
+        // New note button handler
+        newNoteBtn.addEventListener('click', function() {
+            // Clear hash and reload page to start fresh
+            window.location.hash = '';
+            window.location.reload();
+        });
+
+        // Decrypt button handler
+        decryptBtn.addEventListener('click', async function() {
+            const pass = decryptPassword.value;
+            
+            if (!pass) {
+                showStatus('Please enter the password.', true);
+                return;
+            }
+
+            try {
+                decryptBtn.disabled = true;
+                decryptBtn.textContent = '🔄 Decrypting...';
+
+                // Parse the hash fragment
+                const hash = window.location.hash.substring(1);
+                const [ciphertext, iv, salt] = hash.split(':');
+
+                if (!ciphertext || !iv || !salt) {
+                    throw new Error('Invalid URL format');
+                }
+
+                // Decrypt the note
+                const decryptedNote = await decryptNote(ciphertext, iv, salt, pass);
+                
+                // Display decrypted note
+                decryptedText.value = decryptedNote;
+                decryptedResult.classList.remove('hidden');
+                
+                showStatus('Note decrypted successfully!');
+                
+            } catch (error) {
+                console.error('Decryption error:', error);
+                showStatus('Failed to decrypt note. Please check your password and try again.', true);
+            } finally {
+                decryptBtn.disabled = false;
+                decryptBtn.textContent = '🔓 Decrypt Note';
+            }
+        });
+
+        // Allow Enter key to trigger encryption/decryption
+        password.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                encryptBtn.click();
+            }
+        });
+
+        decryptPassword.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                decryptBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>
